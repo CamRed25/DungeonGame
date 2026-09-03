@@ -204,9 +204,16 @@ tune after trying it — not final balance:
 |---|---|
 | Starting mana | 50 |
 | Dig cost | 2 mana/cell |
+| Adventurer hp / attack | 12 / 4 |
 | Mana per adventurer defeated | 12 |
 | Tick duration | 1000ms |
 | Spawn interval | every 10 ticks (first spawn at tick 10) |
+
+Adventurer stats were left undefined by earlier revisions of this spec — 12/4
+means a lone `goblin` (10hp/3atk) loses a straight fight (adventurer
+survives around 3hp), so a single monster alone doesn't stop an adventurer;
+pairing it with a trap does. Tune after playtesting like the rest of this
+table.
 
 ## Error Handling
 
