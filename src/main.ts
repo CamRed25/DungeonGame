@@ -9,22 +9,31 @@ import { TICK_MS } from './economy';
 const state = createGameState();
 let lastEvents: string[] = [];
 
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
 function draw(): void {
   console.clear();
   console.log(render(state, lastEvents));
 }
 
+// console.clear() wipes whatever readline had drawn for the in-progress input
+// line without telling readline, so the prompt/typed-so-far text must be
+// explicitly redrawn after every clear — otherwise typing is invisible and
+// gets erased by the next tick before it's readable.
+function redraw(): void {
+  draw();
+  rl.prompt(true);
+}
+
 const loop = new TickLoop(() => {
   lastEvents = runTick(state);
-  draw();
+  redraw();
   if (state.runState === 'over') {
     loop.end();
   }
 }, TICK_MS);
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
-draw();
+redraw();
 loop.start();
 
 rl.on('line', (line) => {
@@ -35,5 +44,7 @@ rl.on('line', (line) => {
   if (quit) {
     rl.close();
     process.exit(0);
+    return;
   }
+  rl.prompt(true);
 });
