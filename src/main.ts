@@ -27,7 +27,15 @@ function redraw(): void {
 
 const loop = new TickLoop(() => {
   lastEvents = runTick(state);
-  redraw();
+  // The simulation always advances, but the visible redraw is skipped while
+  // the player has an unsent, in-progress line: once that line wraps to a
+  // second terminal row, readline redraws it with row-relative cursor moves
+  // based on its own last-known row count, which our full-screen clear
+  // invalidates — corrupting the display. Deferring until the line is empty
+  // (submitted, or never started) avoids the conflict entirely.
+  if (rl.line.length === 0) {
+    redraw();
+  }
   if (state.runState === 'over') {
     loop.end();
   }
