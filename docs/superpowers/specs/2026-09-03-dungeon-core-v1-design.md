@@ -33,6 +33,8 @@ Real-time with pause:
 
 ## Initial State
 
+- **Coordinates**: `(0, 0)` is the top-left cell; `x` increases rightward,
+  `y` increases downward.
 - **Grid**: 20 cells wide × 12 tall.
 - **Core**: fixed at `(2, 6)`.
 - **Entrance**: fixed at `(17, 6)`, starts as a `floor` cell, but is
@@ -59,9 +61,13 @@ Real-time with pause:
 ## Occupancy Rules
 
 - **Adventurers**: no occupancy limit — any number may share a cell.
-- **Monsters**: exactly one per cell.
-- **Traps**: exactly one per cell; a trap and a monster may coexist on the
-  same cell.
+- **Monsters**: at most one per cell. Placing a monster is rejected only if
+  the target cell already has a monster — an existing trap on that cell
+  does not block it.
+- **Traps**: at most one per cell. Placing a trap is rejected only if the
+  target cell already has a trap — an existing monster on that cell does
+  not block it.
+- A cell may therefore hold one monster *and* one trap at the same time.
 - Monsters and traps may not be placed on the core cell or the entrance
   cell.
 
@@ -69,17 +75,22 @@ Real-time with pause:
 
 ### Adventurer spawning
 
-Every `spawnInterval` ticks: if a path exists from the entrance to the core
-(BFS check), spawn a new adventurer at the entrance. If no path exists,
-skip spawning for that interval and check again next interval. There is no
-cap on concurrent adventurers and no queue — since adventurers don't block
-each other's cell occupancy, a missing/blocked entrance never needs special
-handling beyond "no path → don't spawn."
+Every `spawnInterval` ticks (first spawn at tick `spawnInterval`, not tick
+0): if a path exists from the entrance to the core (BFS check), spawn a
+new adventurer at the entrance. If no path exists, skip spawning for that
+interval and check again next interval. There is no cap on concurrent
+adventurers and no queue — since adventurers don't block each other's cell
+occupancy, a missing/blocked entrance never needs special handling beyond
+"no path → don't spawn."
 
 ### Adventurer pathing
 
 Each adventurer BFS-pathfinds from its current cell to the core each tick
-(grid is small enough this is cheap; no path caching in v1).
+(grid is small enough this is cheap; no path caching in v1). BFS considers
+terrain only (`wall` blocks, `floor`/`core` are passable) — it ignores
+monsters, traps, and other adventurers entirely, so entity placement can
+never make the path-existence check (used for spawning) or a path itself
+disappear.
 
 ### Tick resolution order
 
@@ -95,11 +106,13 @@ Each adventurer BFS-pathfinds from its current cell to the core each tick
    not against positions updated mid-tick.
 4. **Remove the dead** (hp <= 0). Dead entities take no further action this
    tick — they don't move, attack, or trigger traps.
-5. **Move surviving adventurers**: any adventurer that was *not* paired in
-   a combat this tick advances one step along its BFS path. (An adventurer
-   paired in combat is, by the adjacency rule above, already standing next
-   to or on a monster's cell, so it naturally stays put and fights instead
-   of walking through — no separate "blocked by monster" case needed.)
+5. **Move surviving adventurers**: combat does not by itself stop movement.
+   Each surviving adventurer moves one step along its BFS path *unless*
+   the next cell on that path contains a living monster, in which case it
+   stays in place. So an adventurer merely adjacent to a monster (but not
+   walking into its cell) still advances each tick, taking chip damage as
+   it passes; a monster actually standing in the corridor blocks progress
+   and becomes a real chokepoint.
 6. **Trap check**: for each adventurer that just moved onto a trap's cell,
    apply the trap's damage once and delete the trap. Remove the adventurer
    if this kills it.
@@ -112,11 +125,14 @@ Each adventurer BFS-pathfinds from its current cell to the core each tick
 
 Parsed as whitespace-split tokens, dispatched via a lookup by first token:
 
-- `dig x y` — convert wall→floor at (x,y) if adjacent to existing floor.
-- `spawn <monsterKind> x y` — place a monster on an empty floor cell,
-  deduct mana.
-- `trap <trapKind> x y` — place a trap on a floor cell without an existing
-  trap, deduct mana.
+- `dig x y` — convert wall→floor at (x,y) if adjacent to an existing floor
+  or core cell.
+- `spawn <monsterKind> x y` — place a monster on a floor cell with no
+  existing monster (a trap there is fine), deduct mana. `monsterKind` is
+  one of the kinds listed in Monster & Trap Kinds below.
+- `trap <trapKind> x y` — place a trap on a floor cell with no existing
+  trap (a monster there is fine), deduct mana. `trapKind` is one of the
+  kinds listed below.
 - `pause` — stop the tick interval. No-op with a printed message
   (`Already paused.`) if already paused.
 - `resume` — restart the tick interval. No-op with a printed message
@@ -137,18 +153,38 @@ Once a run has ended (loss), all gameplay commands print
 
 ## Rendering & Feedback
 
-Each tick (and after each command), clear the screen and print:
+After every tick, and after every command, clear the screen and print:
 
-- The grid: one character per cell (wall/floor/core/monster/adventurer/trap
-  — entities drawn over their cell's terrain).
+- The grid: one character per cell. Rendering precedence when a cell holds
+  more than one thing: adventurer > monster > trap > terrain.
 - A status line: current mana, tick count, adventurer count, paused/running.
-- One line per notable event that occurred that tick (combat damage,
-  trap trigger, adventurer defeated + mana gained, adventurer reaching the
-  core). No output if nothing happened that tick — avoid empty-tick spam.
-  Examples:
+- Event lines, per the timing rule below.
+
+**Event timing**: simulation event lines (combat damage, trap triggers,
+adventurer deaths, adventurer reaching the core) are only generated by tick
+resolution and appear on the redraw that follows a tick — never output if
+nothing happened that tick, to avoid empty-tick spam. Command errors are
+different: they print immediately on the redraw that follows the command
+that caused them, independent of the tick loop. Examples of tick events:
   - `Goblin hit Adventurer for 3 damage.`
   - `Trap triggered on Adventurer for 6 damage.`
   - `Adventurer defeated: +12 mana.`
+
+## Monster & Trap Kinds
+
+v1 ships exactly one kind of each. `spawn`/`trap` reject any other kind
+name with an "Unknown kind" error.
+
+| Monster kind | Cost | hp | attack |
+|---|---|---|---|
+| `goblin` | 15 mana | 10 | 3 |
+
+| Trap kind | Cost | Damage |
+|---|---|---|
+| `spike` | 8 mana | 6 |
+
+Surviving monsters remain in place indefinitely; dead monsters are
+removed. Traps are consumed (deleted) the first time they trigger.
 
 ## Economy Defaults
 
@@ -159,16 +195,9 @@ tune after trying it — not final balance:
 |---|---|
 | Starting mana | 50 |
 | Dig cost | 2 mana/cell |
-| Monster cost | 15 mana |
-| Monster hp / attack | 10 / 3 |
-| Trap cost | 8 mana |
-| Trap damage | 6 |
 | Mana per adventurer defeated | 12 |
 | Tick duration | 1000ms |
-| Spawn interval | every 10 ticks |
-
-Monsters persist after combat (reusable); traps are consumed on trigger
-(single-use), matching their relative cost.
+| Spawn interval | every 10 ticks (first spawn at tick 10) |
 
 ## Error Handling
 
@@ -193,6 +222,9 @@ dependency:
   damage applied to both sides using pre-tick hp, correct deaths.
 - A monster damages every adventurer paired with it in one tick (occupying
   or adjacent), not just one.
+- An adventurer merely adjacent to a monster (not blocked) still moves that
+  tick; an adventurer whose next path cell contains a living monster stays
+  in place instead.
 - Trap trigger applies damage once and removes the trap from state.
 - Mana spend validation (rejects insufficient funds) and mana refund on
   kill.
