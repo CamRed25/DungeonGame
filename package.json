@@ -1,0 +1,14 @@
+{
+  "name": "dungeon-core",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node -r ts-node/register src/main.ts",
+    "test": "node -r ts-node/register --test \"tests/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}
