@@ -90,7 +90,9 @@ Each adventurer BFS-pathfinds from its current cell to the core each tick
 terrain only (`wall` blocks, `floor`/`core` are passable) — it ignores
 monsters, traps, and other adventurers entirely, so entity placement can
 never make the path-existence check (used for spawning) or a path itself
-disappear.
+disappear. Concretely: a trap or a monster sitting anywhere on the
+entrance→core route does not block the spawn check — it just means the
+first adventurer to reach it fights or triggers it.
 
 ### Tick resolution order
 
@@ -103,7 +105,9 @@ disappear.
 3. **Apply damage simultaneously**: every paired monster deals `attack` to
    every adventurer it's paired with, and vice versa, all using
    start-of-tick hp. This is why the pairing happens against the snapshot,
-   not against positions updated mid-tick.
+   not against positions updated mid-tick. An adventurer attacks every
+   monster it's paired with, including a monster it's merely passing
+   beside (adjacent, not occupying) rather than walking into.
 4. **Remove the dead** (hp <= 0). Dead entities take no further action this
    tick — they don't move, attack, or trigger traps.
 5. **Move surviving adventurers**: combat does not by itself stop movement.
@@ -112,10 +116,14 @@ disappear.
    stays in place. So an adventurer merely adjacent to a monster (but not
    walking into its cell) still advances each tick, taking chip damage as
    it passes; a monster actually standing in the corridor blocks progress
-   and becomes a real chokepoint.
-6. **Trap check**: for each adventurer that just moved onto a trap's cell,
-   apply the trap's damage once and delete the trap. Remove the adventurer
-   if this kills it.
+   and becomes a real chokepoint. This check uses post-combat entity
+   state (after step 4): if the monster occupying the next cell died in
+   this tick's combat, the adventurer is free to move into that cell in
+   the same tick.
+6. **Trap check**: for each adventurer that just moved onto a trap's cell
+   (including a cell it entered because a monster there just died), apply
+   the trap's damage once and delete the trap. Remove the adventurer if
+   this kills it.
 7. **Loss check**: if any adventurer occupies the core's cell, the run
    ends (see Pause/End behavior).
 8. **Mana income**: for every adventurer that died this tick (combat or
@@ -139,8 +147,8 @@ Parsed as whitespace-split tokens, dispatched via a lookup by first token:
   (`Already running.`) if already running. Never creates a second timer —
   the loop controller holds a single interval handle.
 - `status` — print core position, entrance position, current mana, tick
-  count, and a list of alive monsters/adventurers (kind, pos, hp) and
-  active traps.
+  count, run state (running/paused/over), and a list of alive
+  monsters/adventurers (kind, pos, hp) and active traps.
 - `help` — print the command list.
 - `quit` — clear the interval (if any), close readline, exit the process.
 
@@ -157,7 +165,8 @@ After every tick, and after every command, clear the screen and print:
 
 - The grid: one character per cell. Rendering precedence when a cell holds
   more than one thing: adventurer > monster > trap > terrain.
-- A status line: current mana, tick count, adventurer count, paused/running.
+- A status line: current mana, tick count, adventurer count, and run state
+  (running/paused/over).
 - Event lines, per the timing rule below.
 
 **Event timing**: simulation event lines (combat damage, trap triggers,
@@ -172,7 +181,7 @@ that caused them, independent of the tick loop. Examples of tick events:
 
 ## Monster & Trap Kinds
 
-v1 ships exactly one kind of each. `spawn`/`trap` reject any other kind
+v1 ships one supported kind of each. `spawn`/`trap` reject any other kind
 name with an "Unknown kind" error.
 
 | Monster kind | Cost | hp | attack |
