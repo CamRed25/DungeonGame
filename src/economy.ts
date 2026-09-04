@@ -13,9 +13,6 @@ export const TICK_MS = 1000;
 export const SPAWN_INTERVAL_TICKS = 10;
 export const PASSIVE_MANA_PER_TICK = PASSIVE_MANA_PER_MINUTE / (60_000 / TICK_MS);
 
-export const ADVENTURER_HP = 12;
-export const ADVENTURER_ATTACK = 4;
-
 export interface MonsterKindDef {
   name: string;
   cost: number;

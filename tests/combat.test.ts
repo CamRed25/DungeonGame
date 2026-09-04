@@ -28,7 +28,7 @@ test('adventurer merely adjacent to a monster still moves and takes chip damage'
 
   const state = makeState(grid, {
     monsters: [{ id: 1, kind: 'goblin', pos: { x: 3, y: 1 }, hp: 10, maxHp: 10, attack: 3 }],
-    adventurers: [{ id: 2, pos: { x: 3, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
+    adventurers: [{ id: 2, kind: 'warrior', pos: { x: 3, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
   });
 
   runTick(state);
@@ -46,7 +46,7 @@ test('adventurer whose next path cell holds a living monster stays in place', ()
 
   const state = makeState(grid, {
     monsters: [{ id: 1, kind: 'goblin', pos: { x: 2, y: 0 }, hp: 10, maxHp: 10, attack: 3 }],
-    adventurers: [{ id: 2, pos: { x: 3, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
+    adventurers: [{ id: 2, kind: 'warrior', pos: { x: 3, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
   });
 
   runTick(state);
@@ -62,7 +62,7 @@ test('adventurer can move into a cell whose monster died this tick, and its trap
 
   const state = makeState(grid, {
     monsters: [{ id: 1, kind: 'goblin', pos: { x: 2, y: 0 }, hp: 1, maxHp: 10, attack: 3 }],
-    adventurers: [{ id: 2, pos: { x: 3, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
+    adventurers: [{ id: 2, kind: 'warrior', pos: { x: 3, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
     traps: [{ pos: { x: 2, y: 0 }, kind: 'spike', damage: 6 }],
   });
 
@@ -85,8 +85,8 @@ test('a monster damages every adventurer paired with it in the same tick', () =>
   const state = makeState(grid, {
     monsters: [{ id: 1, kind: 'goblin', pos: { x: 1, y: 1 }, hp: 10, maxHp: 10, attack: 3 }],
     adventurers: [
-      { id: 2, pos: { x: 0, y: 1 }, hp: 12, maxHp: 12, attack: 4 },
-      { id: 3, pos: { x: 2, y: 1 }, hp: 12, maxHp: 12, attack: 4 },
+      { id: 2, kind: 'warrior', pos: { x: 0, y: 1 }, hp: 12, maxHp: 12, attack: 4 },
+      { id: 3, kind: 'warrior', pos: { x: 2, y: 1 }, hp: 12, maxHp: 12, attack: 4 },
     ],
   });
 
@@ -104,7 +104,7 @@ test('adventurer defeated in combat grants mana', () => {
   const state = makeState(grid, {
     mana: 0,
     monsters: [{ id: 1, kind: 'goblin', pos: { x: 1, y: 0 }, hp: 10, maxHp: 10, attack: 30 }],
-    adventurers: [{ id: 2, pos: { x: 1, y: 0 }, hp: 1, maxHp: 12, attack: 4 }],
+    adventurers: [{ id: 2, kind: 'warrior', pos: { x: 1, y: 0 }, hp: 1, maxHp: 12, attack: 4 }],
   });
 
   const events = runTick(state);
@@ -117,7 +117,7 @@ test('adventurer defeated in combat grants mana', () => {
 test('adventurer reaching the core ends the run', () => {
   const grid = new Grid({ width: 2, height: 1, corePos: { x: 0, y: 0 }, entrancePos: { x: 1, y: 0 } });
   const state = makeState(grid, {
-    adventurers: [{ id: 2, pos: { x: 1, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
+    adventurers: [{ id: 2, kind: 'warrior', pos: { x: 1, y: 0 }, hp: 12, maxHp: 12, attack: 4 }],
   });
 
   const events = runTick(state);

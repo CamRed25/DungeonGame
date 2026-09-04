@@ -27,8 +27,8 @@ test('monsterAt/trapAt/adventurersAt find entities by position', () => {
   const state = createGameState();
   state.monsters.push({ id: 1, kind: 'goblin', pos: { x: 5, y: 5 }, hp: 10, maxHp: 10, attack: 3 });
   state.traps.push({ pos: { x: 6, y: 6 }, kind: 'spike', damage: 6 });
-  state.adventurers.push({ id: 2, pos: { x: 5, y: 5 }, hp: 12, maxHp: 12, attack: 4 });
-  state.adventurers.push({ id: 3, pos: { x: 5, y: 5 }, hp: 12, maxHp: 12, attack: 4 });
+  state.adventurers.push({ id: 2, kind: 'warrior', pos: { x: 5, y: 5 }, hp: 12, maxHp: 12, attack: 4 });
+  state.adventurers.push({ id: 3, kind: 'warrior', pos: { x: 5, y: 5 }, hp: 12, maxHp: 12, attack: 4 });
 
   assert.equal(monsterAt(state, { x: 5, y: 5 })?.id, 1);
   assert.equal(monsterAt(state, { x: 0, y: 0 }), undefined);

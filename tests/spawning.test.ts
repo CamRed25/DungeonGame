@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createGameState, GameState } from '../src/state';
 import { maybeSpawnAdventurer } from '../src/spawning';
 import { digCell } from '../src/placement';
-import { ENTRANCE_POS, CORE_POS, SPAWN_INTERVAL_TICKS } from '../src/economy';
+import { ENTRANCE_POS, CORE_POS, SPAWN_INTERVAL_TICKS, ADVENTURER_KINDS } from '../src/economy';
 
 function digRoute(state: GameState): void {
   const y = CORE_POS.y;
@@ -37,6 +37,9 @@ test('spawns at the entrance on an interval tick when a path exists', () => {
   assert.ok(adventurer);
   assert.deepEqual(adventurer?.pos, ENTRANCE_POS);
   assert.equal(state.adventurers.length, 1);
+  assert.equal(adventurer?.kind, 'warrior');
+  assert.equal(adventurer?.hp, ADVENTURER_KINDS.warrior.hp);
+  assert.equal(adventurer?.attack, ADVENTURER_KINDS.warrior.attack);
 });
 
 test('a monster or trap sitting on the route does not block spawning', () => {

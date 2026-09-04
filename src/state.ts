@@ -1,5 +1,5 @@
 import { Grid, Pos } from './grid';
-import { GRID_WIDTH, GRID_HEIGHT, CORE_POS, ENTRANCE_POS, STARTING_MANA } from './economy';
+import { GRID_WIDTH, GRID_HEIGHT, CORE_POS, ENTRANCE_POS, STARTING_MANA, AdventurerKind } from './economy';
 
 export type RunState = 'running' | 'paused' | 'over';
 
@@ -14,6 +14,7 @@ export interface Monster {
 
 export interface Adventurer {
   id: number;
+  kind: AdventurerKind;
   pos: Pos;
   hp: number;
   maxHp: number;
