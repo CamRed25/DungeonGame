@@ -44,3 +44,28 @@ export function getMonsterKind(name: string): MonsterKindDef | undefined {
 export function getTrapKind(name: string): TrapKindDef | undefined {
   return TRAP_KINDS[name];
 }
+
+export type AdventurerKind = 'warrior' | 'scout' | 'mage' | 'rogue';
+
+export interface AdventurerKindDef {
+  name: AdventurerKind;
+  hp: number;
+  attack: number;
+  moveSpeed: number;
+  attackRange: number;
+  avoidsTraps: boolean;
+}
+
+export const ADVENTURER_KINDS: Record<AdventurerKind, AdventurerKindDef> = {
+  warrior: { name: 'warrior', hp: 24, attack: 6, moveSpeed: 1, attackRange: 1, avoidsTraps: false },
+  scout: { name: 'scout', hp: 10, attack: 3, moveSpeed: 2, attackRange: 1, avoidsTraps: false },
+  mage: { name: 'mage', hp: 8, attack: 5, moveSpeed: 1, attackRange: 3, avoidsTraps: false },
+  rogue: { name: 'rogue', hp: 10, attack: 4, moveSpeed: 1, attackRange: 1, avoidsTraps: true },
+};
+
+export const ADVENTURER_SPAWN_WEIGHTS: Record<AdventurerKind, number> = {
+  warrior: 40,
+  scout: 30,
+  rogue: 20,
+  mage: 10,
+};
