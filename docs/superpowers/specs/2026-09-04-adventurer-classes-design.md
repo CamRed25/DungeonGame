@@ -54,7 +54,7 @@ pattern:
 
 ```ts
 export interface AdventurerKindDef {
-  name: string;
+  name: AdventurerKind; // literal, not a free-form string — must match its own registry key
   hp: number;
   attack: number;
   moveSpeed: number;    // cells moved per tick
@@ -89,6 +89,11 @@ unchanged from v1 behavior.
 selection over `ADVENTURER_SPAWN_WEIGHTS` on each spawn tick. To keep this
 testable without flaky statistical assertions, the selection logic is
 split into a pure function and an injectable random source:
+
+Precondition (unenforced — internal code, not a player-facing boundary):
+`roll` must be in `[0, 1)`; `weights` values must be non-negative with a
+positive total. `ADVENTURER_SPAWN_WEIGHTS` satisfies this by construction;
+`Math.random()` satisfies the `roll` contract by definition.
 
 ```ts
 // Pure, deterministic — test directly with fixed roll values.
@@ -152,12 +157,17 @@ This replaces "combat pairs" (v1 tick-resolution step 2) with two
 directional checks, both evaluated from the same start-of-tick snapshot
 used elsewhere in tick resolution:
 
+Both are exported from `combat.ts` (not module-private) specifically so
+the Testing section below can exercise them directly with hand-built
+`Adventurer`/`Monster` objects, rather than only indirectly through
+`runTick`:
+
 ```ts
-function adventurerCanAttackMonster(a: Adventurer, m: Monster): boolean {
+export function adventurerCanAttackMonster(a: Adventurer, m: Monster): boolean {
   return manhattanDistance(a.pos, m.pos) <= ADVENTURER_KINDS[a.kind].attackRange;
 }
 
-function monsterCanAttackAdventurer(m: Monster, a: Adventurer): boolean {
+export function monsterCanAttackAdventurer(m: Monster, a: Adventurer): boolean {
   // No monster kind has a ranged attack in v2 — always adjacency (range 1).
   // Revisit if a future monster kind needs its own attackRange field.
   return manhattanDistance(m.pos, a.pos) <= 1;
@@ -173,10 +183,11 @@ Revised tick-resolution steps 2–3 (replacing v1's):
    warrior standing next to a monster has both true, same as v1; a mage 3
    cells out has only the first true).
 3. **Apply damage simultaneously**, using start-of-tick hp for everyone:
-   every monster with `adventurerCanAttackMonster` true takes that
-   adventurer's `attack`; every adventurer with `monsterCanAttackAdventurer`
-   true takes that monster's `attack`. A pair with only one relation true
-   deals damage in one direction only that tick.
+   for each (adventurer, monster) pair, apply the adventurer's `attack` to
+   the monster if `adventurerCanAttackMonster` is true, and apply the
+   monster's `attack` to the adventurer if `monsterCanAttackAdventurer` is
+   true. A pair with only one relation true deals damage in one direction
+   only that tick.
 
 Steps 1, 4, 7, and 8 of the v1 tick order (snapshot, remove the dead, loss
 check, mana income) are unchanged in structure. Step 6 ("trap check") is no
@@ -272,8 +283,9 @@ No new player-facing error paths — class selection happens inside
   - `adventurerCanAttackMonster`/`monsterCanAttackAdventurer` as pure
     Manhattan-distance checks (unit tests, no tick involved).
   - Ranged asymmetry: mage at distance 3 damages a monster; that monster
-    does not damage the mage back that tick (monster only retaliates once
-    adjacent on a later tick).
+    does not damage the mage back that tick. Monsters never move (v1 rule,
+    unchanged) — the monster does not retaliate at all unless the mage
+    itself later moves into melee range.
   - Scout 2-cell movement: moves twice in one tick along its path.
   - Scout dies to a trap on its first landing: does not take a second
     step, is removed from state, mana is credited once.
