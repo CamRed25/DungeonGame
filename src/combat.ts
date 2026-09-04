@@ -2,17 +2,27 @@ import { GameState, Monster, Adventurer, samePos } from './state';
 import { Pos } from './grid';
 import { findPath } from './pathfinding';
 import { maybeSpawnAdventurer } from './spawning';
-import { MANA_PER_KILL, PASSIVE_MANA_PER_TICK } from './economy';
+import { MANA_PER_KILL, PASSIVE_MANA_PER_TICK, ADVENTURER_KINDS } from './economy';
 
-function isAdjacentOrSame(a: Pos, b: Pos): boolean {
-  if (samePos(a, b)) return true;
-  const dx = Math.abs(a.x - b.x);
-  const dy = Math.abs(a.y - b.y);
-  return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+function manhattanDistance(a: Pos, b: Pos): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+export function adventurerCanAttackMonster(adventurer: Adventurer, monster: Monster): boolean {
+  return manhattanDistance(adventurer.pos, monster.pos) <= ADVENTURER_KINDS[adventurer.kind].attackRange;
+}
+
+export function monsterCanAttackAdventurer(monster: Monster, adventurer: Adventurer): boolean {
+  // No monster kind has a ranged attack in v2 — always melee range.
+  return manhattanDistance(monster.pos, adventurer.pos) <= 1;
 }
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function cellKey(pos: Pos): string {
+  return `${pos.x},${pos.y}`;
 }
 
 export function runTick(state: GameState): string[] {
@@ -21,24 +31,21 @@ export function runTick(state: GameState): string[] {
 
   maybeSpawnAdventurer(state);
 
-  // Steps 1-2: snapshot combat pairs (monster paired with every adventurer on/adjacent to its cell).
-  const pairs: Array<{ monster: Monster; adventurer: Adventurer }> = [];
-  for (const monster of state.monsters) {
-    for (const adventurer of state.adventurers) {
-      if (isAdjacentOrSame(monster.pos, adventurer.pos)) {
-        pairs.push({ monster, adventurer });
-      }
-    }
-  }
-
-  // Step 3: tally and apply damage simultaneously, off start-of-tick hp.
+  // Steps 2-3: directional attack relations from the start-of-tick snapshot,
+  // damage applied simultaneously off start-of-tick hp.
   const monsterDamage = new Map<number, number>();
   const adventurerDamage = new Map<number, number>();
-  for (const { monster, adventurer } of pairs) {
-    adventurerDamage.set(adventurer.id, (adventurerDamage.get(adventurer.id) ?? 0) + monster.attack);
-    monsterDamage.set(monster.id, (monsterDamage.get(monster.id) ?? 0) + adventurer.attack);
-    events.push(`${capitalize(monster.kind)} hit Adventurer for ${monster.attack} damage.`);
-    events.push(`Adventurer hit ${capitalize(monster.kind)} for ${adventurer.attack} damage.`);
+  for (const adventurer of state.adventurers) {
+    for (const monster of state.monsters) {
+      if (adventurerCanAttackMonster(adventurer, monster)) {
+        monsterDamage.set(monster.id, (monsterDamage.get(monster.id) ?? 0) + adventurer.attack);
+        events.push(`${capitalize(adventurer.kind)} hit ${capitalize(monster.kind)} for ${adventurer.attack} damage.`);
+      }
+      if (monsterCanAttackAdventurer(monster, adventurer)) {
+        adventurerDamage.set(adventurer.id, (adventurerDamage.get(adventurer.id) ?? 0) + monster.attack);
+        events.push(`${capitalize(monster.kind)} hit ${capitalize(adventurer.kind)} for ${monster.attack} damage.`);
+      }
+    }
   }
   for (const monster of state.monsters) {
     monster.hp -= monsterDamage.get(monster.id) ?? 0;
@@ -64,29 +71,51 @@ export function runTick(state: GameState): string[] {
     return true;
   });
 
-  // Step 5: move survivors, using post-combat monster positions to decide blocking.
+  // Steps 5-6 (merged): move each survivor up to its class's moveSpeed cells this
+  // tick, resolving a trap immediately after each landing rather than once at the
+  // end — a multi-step mover (scout) can die mid-move and never take its later step.
+  // A rogue's path is computed avoiding known trap cells (snapshotted here, before
+  // any adventurer moves this tick), falling back to the unrestricted path if no
+  // trap-free route exists.
+  const trapKeysAtMovementStart = new Set(state.traps.map((t) => cellKey(t.pos)));
   for (const adventurer of state.adventurers) {
-    const path = findPath(state.grid, adventurer.pos, state.grid.corePos);
+    const kindDef = ADVENTURER_KINDS[adventurer.kind];
+    let path = findPath(
+      state.grid,
+      adventurer.pos,
+      state.grid.corePos,
+      kindDef.avoidsTraps ? trapKeysAtMovementStart : undefined,
+    );
+    if (kindDef.avoidsTraps && !path) {
+      path = findPath(state.grid, adventurer.pos, state.grid.corePos);
+    }
     if (!path || path.length < 2) continue;
-    const nextCell = path[1];
-    const blockingMonster = state.monsters.find((m) => samePos(m.pos, nextCell));
-    if (blockingMonster) continue;
-    adventurer.pos = nextCell;
-  }
 
-  // Step 6: trap check on the cell each adventurer just moved into.
-  for (const adventurer of [...state.adventurers]) {
-    const trapIndex = state.traps.findIndex((t) => samePos(t.pos, adventurer.pos));
-    if (trapIndex === -1) continue;
-    const trap = state.traps[trapIndex];
-    state.traps.splice(trapIndex, 1);
-    adventurer.hp -= trap.damage;
-    events.push(`Trap triggered on Adventurer for ${trap.damage} damage.`);
-    if (adventurer.hp <= 0) {
-      state.adventurers = state.adventurers.filter((a) => a.id !== adventurer.id);
-      killedThisTick += 1;
+    let cellIndex = 1;
+    for (let step = 0; step < kindDef.moveSpeed; step++) {
+      const nextCell = path[cellIndex];
+      if (!nextCell) break;
+      const blockingMonster = state.monsters.find((m) => samePos(m.pos, nextCell));
+      if (blockingMonster) break;
+
+      adventurer.pos = nextCell;
+      cellIndex += 1;
+
+      const trapIndex = state.traps.findIndex((t) => samePos(t.pos, adventurer.pos));
+      if (trapIndex !== -1) {
+        const trap = state.traps[trapIndex];
+        state.traps.splice(trapIndex, 1);
+        adventurer.hp -= trap.damage;
+        events.push(`Trap triggered on ${capitalize(adventurer.kind)} for ${trap.damage} damage.`);
+        if (adventurer.hp <= 0) {
+          killedThisTick += 1;
+          break;
+        }
+      }
+      if (samePos(adventurer.pos, state.grid.corePos)) break;
     }
   }
+  state.adventurers = state.adventurers.filter((a) => a.hp > 0);
 
   // Step 7: loss check.
   const coreReached = state.adventurers.some((a) => samePos(a.pos, state.grid.corePos));
