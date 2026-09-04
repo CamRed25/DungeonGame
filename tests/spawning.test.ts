@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState, GameState } from '../src/state';
-import { maybeSpawnAdventurer } from '../src/spawning';
+import { maybeSpawnAdventurer, selectAdventurerKind } from '../src/spawning';
 import { digCell } from '../src/placement';
-import { ENTRANCE_POS, CORE_POS, SPAWN_INTERVAL_TICKS, ADVENTURER_KINDS } from '../src/economy';
+import { ENTRANCE_POS, CORE_POS, SPAWN_INTERVAL_TICKS, ADVENTURER_KINDS, ADVENTURER_SPAWN_WEIGHTS } from '../src/economy';
 
 function digRoute(state: GameState): void {
   const y = CORE_POS.y;
@@ -32,7 +32,7 @@ test('spawns at the entrance on an interval tick when a path exists', () => {
   digRoute(state);
   state.tick = SPAWN_INTERVAL_TICKS;
 
-  const adventurer = maybeSpawnAdventurer(state);
+  const adventurer = maybeSpawnAdventurer(state, () => 0); // deterministic: lands in the warrior slot
 
   assert.ok(adventurer);
   assert.deepEqual(adventurer?.pos, ENTRANCE_POS);
@@ -50,4 +50,27 @@ test('a monster or trap sitting on the route does not block spawning', () => {
   state.tick = SPAWN_INTERVAL_TICKS;
 
   assert.ok(maybeSpawnAdventurer(state));
+});
+
+test('selectAdventurerKind picks by cumulative weight boundaries', () => {
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0), 'warrior');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.39999), 'warrior');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.4), 'scout');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.69999), 'scout');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.7), 'rogue');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.89999), 'rogue');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.9), 'mage');
+  assert.equal(selectAdventurerKind(ADVENTURER_SPAWN_WEIGHTS, 0.99999), 'mage');
+});
+
+test('maybeSpawnAdventurer wires the injected rng into class selection', () => {
+  const state = createGameState();
+  digRoute(state);
+  state.tick = SPAWN_INTERVAL_TICKS;
+
+  const adventurer = maybeSpawnAdventurer(state, () => 0.95); // lands in the mage slot
+
+  assert.equal(adventurer?.kind, 'mage');
+  assert.equal(adventurer?.hp, ADVENTURER_KINDS.mage.hp);
+  assert.equal(adventurer?.attack, ADVENTURER_KINDS.mage.attack);
 });
