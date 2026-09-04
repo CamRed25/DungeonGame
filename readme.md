@@ -68,13 +68,19 @@ The map uses these symbols:
 | `#` | Wall |
 | `.` | Floor |
 | `C` | Core |
-| `A` | Adventurer |
+| `W` | Adventurer (warrior) |
+| `S` | Adventurer (scout) |
+| `M` | Adventurer (mage) |
+| `R` | Adventurer (rogue) |
 | `m` | Monster |
 | `t` | Trap |
 | `X` | Core after the run ends |
 
-Adventurers follow the shortest available terrain path. Monsters can fight
-adventurers occupying the same or an adjacent cell, while a living monster in
+Adventurers follow the shortest available terrain path, one of four classes
+picked at random on spawn: warrior (tanky, melee), scout (moves 2 cells a
+tick), mage (attacks from 3 cells away instead of needing to be adjacent),
+and rogue (paths around known traps when a clear route exists). Monsters
+fight any adventurer within its attacker's range, while a living monster in
 the next path cell blocks movement. Traps trigger when an adventurer moves
 onto them and are then consumed.
 
