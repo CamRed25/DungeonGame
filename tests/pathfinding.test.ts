@@ -47,3 +47,32 @@ test('pathExists mirrors findPath reachability', () => {
   grid.dig({ x: 1, y: 0 });
   assert.equal(pathExists(grid, { x: 4, y: 0 }, { x: 0, y: 0 }), true);
 });
+
+test('findPath routes around cells in the avoid set', () => {
+  const grid = new Grid({ width: 3, height: 3, corePos: { x: 1, y: 0 }, entrancePos: { x: 1, y: 2 } });
+  grid.dig({ x: 1, y: 1 }); // direct route
+  grid.dig({ x: 0, y: 2 }); // detour route
+  grid.dig({ x: 0, y: 1 });
+  grid.dig({ x: 0, y: 0 });
+
+  const path = findPath(grid, { x: 1, y: 2 }, { x: 1, y: 0 }, new Set(['1,1']));
+
+  assert.deepEqual(path, [
+    { x: 1, y: 2 },
+    { x: 0, y: 2 },
+    { x: 0, y: 1 },
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+  ]);
+});
+
+test('findPath returns null when the avoid set blocks every route, even though a route exists without it', () => {
+  const grid = new Grid({ width: 3, height: 1, corePos: { x: 0, y: 0 }, entrancePos: { x: 2, y: 0 } });
+  grid.dig({ x: 1, y: 0 });
+
+  const withoutAvoid = findPath(grid, { x: 2, y: 0 }, { x: 0, y: 0 });
+  const withAvoid = findPath(grid, { x: 2, y: 0 }, { x: 0, y: 0 }, new Set(['1,0']));
+
+  assert.ok(withoutAvoid);
+  assert.equal(withAvoid, null);
+});

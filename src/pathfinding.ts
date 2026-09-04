@@ -4,7 +4,7 @@ function key(pos: Pos): string {
   return `${pos.x},${pos.y}`;
 }
 
-export function findPath(grid: Grid, start: Pos, goal: Pos): Pos[] | null {
+export function findPath(grid: Grid, start: Pos, goal: Pos, avoid?: Set<string>): Pos[] | null {
   if (start.x === goal.x && start.y === goal.y) return [start];
 
   const visited = new Set<string>([key(start)]);
@@ -18,6 +18,7 @@ export function findPath(grid: Grid, start: Pos, goal: Pos): Pos[] | null {
       const k = key(next);
       if (visited.has(k)) continue;
       if (grid.get(next) === 'wall') continue;
+      if (avoid?.has(k)) continue;
       visited.add(k);
       cameFrom.set(k, current);
       if (next.x === goal.x && next.y === goal.y) {
