@@ -2,7 +2,7 @@ import { GameState, Monster, Adventurer, samePos } from './state';
 import { Pos } from './grid';
 import { findPath } from './pathfinding';
 import { maybeSpawnAdventurer } from './spawning';
-import { MANA_PER_KILL } from './economy';
+import { MANA_PER_KILL, PASSIVE_MANA_PER_TICK } from './economy';
 
 function isAdjacentOrSame(a: Pos, b: Pos): boolean {
   if (samePos(a, b)) return true;
@@ -48,7 +48,13 @@ export function runTick(state: GameState): string[] {
   }
 
   // Step 4: remove the dead. Dead entities take no further action this tick.
-  state.monsters = state.monsters.filter((m) => m.hp > 0);
+  state.monsters = state.monsters.filter((m) => {
+    if (m.hp <= 0) {
+      events.push(`${capitalize(m.kind)} defeated.`);
+      return false;
+    }
+    return true;
+  });
   let killedThisTick = 0;
   state.adventurers = state.adventurers.filter((a) => {
     if (a.hp <= 0) {
@@ -95,6 +101,8 @@ export function runTick(state: GameState): string[] {
     state.mana += gained;
     events.push(`Adventurer defeated: +${gained} mana.`);
   }
+
+  state.mana += PASSIVE_MANA_PER_TICK;
 
   return events;
 }

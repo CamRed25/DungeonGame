@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/state';
-import { digCell, spawnMonster, placeTrap } from '../src/placement';
+import { digCell, digLine, spawnMonster, placeTrap } from '../src/placement';
 import { ENTRANCE_POS } from '../src/economy';
 
 test('digCell succeeds adjacent to the entrance and deducts mana', () => {
@@ -28,6 +28,44 @@ test('digCell fails when mana is insufficient', () => {
   const target = { x: ENTRANCE_POS.x - 1, y: ENTRANCE_POS.y };
   const result = digCell(state, target);
   assert.equal(result.ok, false);
+});
+
+test('digLine digs a horizontal route in either direction and charges per cell', () => {
+  const state = createGameState();
+  const before = state.mana;
+
+  const result = digLine(state, { x: 16, y: 6 }, { x: 3, y: 6 });
+
+  assert.deepEqual(result, { ok: true });
+  for (let x = 3; x <= 16; x++) {
+    assert.equal(state.grid.get({ x, y: 6 }), 'floor');
+  }
+  assert.equal(state.mana, before - 14 * 2);
+});
+
+test('digLine rejects diagonal lines without changing state', () => {
+  const state = createGameState();
+  const before = state.mana;
+
+  const result = digLine(state, { x: 16, y: 6 }, { x: 15, y: 5 });
+
+  assert.equal(result.ok, false);
+  assert.equal(state.mana, before);
+  assert.equal(state.grid.get({ x: 16, y: 6 }), 'wall');
+  assert.equal(state.grid.get({ x: 15, y: 5 }), 'wall');
+});
+
+test('digLine validates the whole line before spending mana', () => {
+  const state = createGameState();
+  const before = state.mana;
+  state.mana = 2;
+
+  const result = digLine(state, { x: 16, y: 6 }, { x: 3, y: 6 });
+
+  assert.equal(result.ok, false);
+  assert.equal(state.mana, 2);
+  assert.equal(state.grid.get({ x: 16, y: 6 }), 'wall');
+  assert.equal(before, 50);
 });
 
 test('spawnMonster rejects an unknown kind', () => {

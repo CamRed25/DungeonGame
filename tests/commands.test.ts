@@ -14,6 +14,13 @@ test('help lists commands', () => {
   assert.ok(lines[0].includes('Commands'));
 });
 
+test('tutorial explains the first steps', () => {
+  const ctx = makeCtx();
+  const { lines } = handleCommand(ctx, 'tutorial');
+  assert.ok(lines[0].includes('You are the dungeon core'));
+  assert.ok(lines[0].includes('dig'));
+});
+
 test('status reports tick, mana, and run state', () => {
   const ctx = makeCtx();
   const { lines } = handleCommand(ctx, 'status');
@@ -33,6 +40,22 @@ test('dig delegates to placement and reports success', () => {
   const { lines } = handleCommand(ctx, `dig ${target.x} ${target.y}`);
   assert.ok(lines[0].startsWith('Dug'));
   assert.equal(ctx.state.grid.get(target), 'floor');
+});
+
+test('dig line reports the number of cells dug', () => {
+  const ctx = makeCtx();
+  const { lines } = handleCommand(ctx, 'dig line 16 6 3 6');
+
+  assert.ok(lines[0].includes('Dug 14 cells'));
+  assert.equal(ctx.state.grid.get({ x: 3, y: 6 }), 'floor');
+  assert.equal(ctx.state.grid.get({ x: 16, y: 6 }), 'floor');
+});
+
+test('dig line rejects diagonal coordinates', () => {
+  const ctx = makeCtx();
+  const { lines } = handleCommand(ctx, 'dig line 16 6 15 5');
+
+  assert.ok(lines[0].includes('horizontal or vertical'));
 });
 
 test('dig with bad arguments reports usage instead of throwing', () => {

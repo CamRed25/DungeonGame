@@ -16,6 +16,54 @@ export function digCell(state: GameState, pos: Pos): ActionResult {
   return { ok: true };
 }
 
+export function digLine(state: GameState, start: Pos, end: Pos): ActionResult {
+  if (start.x !== end.x && start.y !== end.y) {
+    return { ok: false, error: 'Dig line must be horizontal or vertical.' };
+  }
+
+  const stepX = Math.sign(end.x - start.x);
+  const stepY = Math.sign(end.y - start.y);
+  const length = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y)) + 1;
+  const cells = Array.from({ length }, (_, i) => ({
+    x: start.x + stepX * i,
+    y: start.y + stepY * i,
+  }));
+
+  if (cells.some((pos) => !state.grid.inBounds(pos))) {
+    return { ok: false, error: 'Dig line is out of bounds.' };
+  }
+  if (cells.some((pos) => state.grid.get(pos) !== 'wall')) {
+    return { ok: false, error: 'Dig line must contain only wall cells.' };
+  }
+
+  const cost = cells.length * DIG_COST;
+  if (state.mana < cost) {
+    return { ok: false, error: `Not enough mana: dig line costs ${cost}, have ${state.mana}.` };
+  }
+
+  const order = [cells, [...cells].reverse()].find((candidate) => canDigInOrder(state, candidate));
+  if (!order) {
+    return { ok: false, error: 'Dig line must start next to an existing floor or core cell.' };
+  }
+
+  for (const pos of order) state.grid.dig(pos);
+  state.mana -= cost;
+  return { ok: true };
+}
+
+function canDigInOrder(state: GameState, cells: Pos[]): boolean {
+  const dug = new Set<string>();
+  for (const pos of cells) {
+    const adjacent = state.grid.neighbors(pos).some((neighbor) => {
+      const key = `${neighbor.x},${neighbor.y}`;
+      return dug.has(key) || state.grid.get(neighbor) === 'floor' || state.grid.get(neighbor) === 'core';
+    });
+    if (!adjacent) return false;
+    dug.add(`${pos.x},${pos.y}`);
+  }
+  return true;
+}
+
 function isCoreOrEntrance(state: GameState, pos: Pos): boolean {
   const g = state.grid;
   return (

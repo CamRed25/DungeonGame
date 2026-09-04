@@ -56,7 +56,8 @@ Real-time with pause:
   Triggers once when an adventurer's move lands it on the trap's cell, then
   is deleted from state — no `consumed` flag, no reset/reload in v1.
 - **Mana**: single number on the core. Spending is validated at command time
-  (reject if insufficient); income comes from adventurer defeats.
+  (reject if insufficient); income comes from adventurer defeats and a small
+  passive rate.
 
 ## Occupancy Rules
 
@@ -135,6 +136,9 @@ Parsed as whitespace-split tokens, dispatched via a lookup by first token:
 
 - `dig x y` — convert wall→floor at (x,y) if adjacent to an existing floor
   or core cell.
+- `dig line x1 y1 x2 y2` — dig every wall cell in a horizontal or vertical
+  line, choosing the direction that grows from an existing floor or core;
+  validate the whole line before spending mana.
 - `spawn <monsterKind> x y` — place a monster on a floor cell with no
   existing monster (a trap there is fine), deduct mana. `monsterKind` is
   one of the kinds listed in Monster & Trap Kinds below.
@@ -149,6 +153,8 @@ Parsed as whitespace-split tokens, dispatched via a lookup by first token:
 - `status` — print core position, entrance position, current mana, tick
   count, run state (running/paused/over), and a list of alive
   monsters/adventurers (kind, pos, hp) and active traps.
+- `tutorial` — print a short introduction to the core loop and coordinate
+  syntax.
 - `help` — print the command list.
 - `quit` — clear the interval (if any), close readline, exit the process.
 
@@ -163,8 +169,10 @@ Once a run has ended (loss), all gameplay commands print
 
 After every tick, and after every command, clear the screen and print:
 
-- The grid: one character per cell. Rendering precedence when a cell holds
-  more than one thing: adventurer > monster > trap > terrain.
+- The grid: one character per cell, with two coordinate-ruler rows above it
+  and two-digit y labels on the left. `x` is the horizontal column and `y`
+  is the vertical row. Rendering precedence when a cell holds more than one
+  thing: adventurer > monster > trap > terrain.
 - A status line: current mana, tick count, adventurer count, and run state
   (running/paused/over).
 - Event lines, per the timing rule below.
@@ -206,6 +214,7 @@ tune after trying it — not final balance:
 | Dig cost | 2 mana/cell |
 | Adventurer hp / attack | 12 / 4 |
 | Mana per adventurer defeated | 12 |
+| Passive mana | 0.1/minute while running |
 | Tick duration | 1000ms |
 | Spawn interval | every 10 ticks (first spawn at tick 10) |
 

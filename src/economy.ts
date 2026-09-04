@@ -8,8 +8,10 @@ export const ENTRANCE_POS: Pos = { x: 17, y: 6 };
 export const STARTING_MANA = 50;
 export const DIG_COST = 2;
 export const MANA_PER_KILL = 12;
+export const PASSIVE_MANA_PER_MINUTE = 0.1;
 export const TICK_MS = 1000;
 export const SPAWN_INTERVAL_TICKS = 10;
+export const PASSIVE_MANA_PER_TICK = PASSIVE_MANA_PER_MINUTE / (60_000 / TICK_MS);
 
 export const ADVENTURER_HP = 12;
 export const ADVENTURER_ATTACK = 4;

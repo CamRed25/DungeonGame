@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Grid } from '../src/grid';
 import { GameState } from '../src/state';
 import { runTick } from '../src/combat';
+import { PASSIVE_MANA_PER_TICK } from '../src/economy';
 
 function makeState(grid: Grid, overrides: Partial<GameState> = {}): GameState {
   return {
@@ -72,6 +73,7 @@ test('adventurer can move into a cell whose monster died this tick, and its trap
   assert.equal(state.adventurers[0].hp, 3); // 12 - 3 (combat) - 6 (trap)
   assert.equal(state.traps.length, 0);
   assert.ok(events.some((e) => e.includes('Trap triggered')));
+  assert.ok(events.some((e) => e.includes('Goblin defeated')));
 });
 
 test('a monster damages every adventurer paired with it in the same tick', () => {
@@ -108,7 +110,7 @@ test('adventurer defeated in combat grants mana', () => {
   const events = runTick(state);
 
   assert.equal(state.adventurers.length, 0);
-  assert.equal(state.mana, 12);
+  assert.equal(state.mana, 12 + PASSIVE_MANA_PER_TICK);
   assert.ok(events.some((e) => e.includes('defeated')));
 });
 
@@ -123,4 +125,17 @@ test('adventurer reaching the core ends the run', () => {
   assert.equal(state.runState, 'over');
   assert.deepEqual(state.adventurers[0].pos, { x: 0, y: 0 });
   assert.ok(events.some((e) => e.includes('core')));
+});
+
+test('passive mana accumulates at 0.1 per minute', () => {
+  const state = makeState(new Grid({
+    width: 1,
+    height: 1,
+    corePos: { x: 0, y: 0 },
+    entrancePos: { x: 0, y: 0 },
+  }), { mana: 0 });
+
+  for (let i = 0; i < 60; i++) runTick(state);
+
+  assert.ok(Math.abs(state.mana - 0.1) < 1e-9);
 });

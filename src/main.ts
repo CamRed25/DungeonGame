@@ -7,7 +7,10 @@ import { render } from './render';
 import { TICK_MS } from './economy';
 
 const state = createGameState();
-let lastEvents: string[] = [];
+let lastEvents: string[] = [
+  'You are the dungeon core.',
+  'Type tutorial for guidance or help for commands.',
+];
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
