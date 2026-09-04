@@ -1,13 +1,20 @@
 import { GameState } from './state';
 import { Pos } from './grid';
+import { AdventurerKind } from './economy';
 
 const GLYPHS: Record<string, string> = {
   wall: '#',
   floor: '.',
   core: 'C',
   monster: 'm',
-  adventurer: 'A',
   trap: 't',
+};
+
+const ADVENTURER_GLYPHS: Record<AdventurerKind, string> = {
+  warrior: 'W',
+  scout: 'S',
+  mage: 'M',
+  rogue: 'R',
 };
 
 export function render(state: GameState, events: string[]): string {
@@ -33,7 +40,8 @@ function coordinateHeader(width: number): string {
 
 function glyphAt(state: GameState, pos: Pos): string {
   if (state.runState === 'over' && pos.x === state.grid.corePos.x && pos.y === state.grid.corePos.y) return 'X';
-  if (state.adventurers.some((a) => a.pos.x === pos.x && a.pos.y === pos.y)) return GLYPHS.adventurer;
+  const adventurer = state.adventurers.find((a) => a.pos.x === pos.x && a.pos.y === pos.y);
+  if (adventurer) return ADVENTURER_GLYPHS[adventurer.kind];
   if (state.monsters.some((m) => m.pos.x === pos.x && m.pos.y === pos.y)) return GLYPHS.monster;
   if (state.traps.some((t) => t.pos.x === pos.x && t.pos.y === pos.y)) return GLYPHS.trap;
   return GLYPHS[state.grid.get(pos)];
