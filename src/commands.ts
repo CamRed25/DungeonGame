@@ -114,7 +114,7 @@ function formatStatus(state: GameState): string {
     `Run state: ${state.runState}`,
     `Core: (${state.grid.corePos.x}, ${state.grid.corePos.y})`,
     `Entrance: (${state.grid.entrancePos.x}, ${state.grid.entrancePos.y})`,
-    `Adventurers: ${state.adventurers.map((a) => `#${a.id} (${a.pos.x},${a.pos.y}) hp ${a.hp}/${a.maxHp}`).join(', ') || 'none'}`,
+    `Adventurers: ${state.adventurers.map((a) => `${a.kind}#${a.id} (${a.pos.x},${a.pos.y}) hp ${a.hp}/${a.maxHp}`).join(', ') || 'none'}`,
     `Monsters: ${state.monsters.map((m) => `${m.kind}#${m.id} (${m.pos.x},${m.pos.y}) hp ${m.hp}/${m.maxHp}`).join(', ') || 'none'}`,
     `Traps: ${state.traps.map((t) => `${t.kind} (${t.pos.x},${t.pos.y})`).join(', ') || 'none'}`,
   ];

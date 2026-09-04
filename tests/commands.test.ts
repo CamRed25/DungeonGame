@@ -92,3 +92,12 @@ test('quit ends the loop and signals the caller to exit', () => {
   assert.equal(ctx.loop.isRunning(), false);
   assert.ok(lines[0].includes('Goodbye'));
 });
+
+test("status includes each adventurer's class", () => {
+  const ctx = makeCtx();
+  ctx.state.adventurers.push({ id: 9, kind: 'mage', pos: { x: 5, y: 5 }, hp: 8, maxHp: 8, attack: 5 });
+
+  const { lines } = handleCommand(ctx, 'status');
+
+  assert.ok(lines[0].includes('mage#9'));
+});
